@@ -1,44 +1,6 @@
 import React, { useState } from 'react';
 import { useIPOLedger } from '../context/IPOContext.jsx';
-import { X, Plus, Trash2, Check, Sparkles, AlertCircle, UserPlus, CreditCard } from 'lucide-react';
-
-const createInitialPartners = (partnersList, preset = '50-50') => {
-  if (!partnersList || partnersList.length === 0) return [];
-  
-  if (preset === '50-50') {
-    const selfIndex = partnersList.findIndex(p => p.isSelf);
-    const mainIdx = selfIndex !== -1 ? selfIndex : 0;
-    const secondIdx = partnersList.findIndex((_, idx) => idx !== mainIdx);
-    
-    return partnersList.map((p, i) => ({
-      partnerId: p.id,
-      percentage: (i === mainIdx || (secondIdx !== -1 && i === secondIdx)) ? 50 : 0
-    }));
-  }
-  
-  if (preset === '3-way') {
-    if (partnersList.length >= 3) {
-      return partnersList.map((p, i) => ({
-        partnerId: p.id,
-        percentage: i === 0 ? 34 : (i === 1 || i === 2 ? 33 : 0)
-      }));
-    } else {
-      const share = Math.floor(100 / partnersList.length);
-      return partnersList.map((p, i) => ({
-        partnerId: p.id,
-        percentage: i === 0 ? 100 - (share * (partnersList.length - 1)) : share
-      }));
-    }
-  }
-
-  // Solo preset (100% to Self / first partner)
-  const selfIndex = partnersList.findIndex(p => p.isSelf);
-  const mainIdx = selfIndex !== -1 ? selfIndex : 0;
-  return partnersList.map((p, i) => ({
-    partnerId: p.id,
-    percentage: i === mainIdx ? 100 : 0
-  }));
-};
+import { X, Plus, Trash2, Check, Sparkles, AlertCircle, UserPlus, CreditCard, Users } from 'lucide-react';
 
 export default function ApplicationModal({ isOpen, onClose, initialData }) {
   const { partners, accounts, addIPO, addPartner, addAccount, showToast } = useIPOLedger();
@@ -48,6 +10,61 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
   const [sharesPerLot, setSharesPerLot] = useState(30);
   const [applyDate, setApplyDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
+
+  // Quick Add Partner/Account state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickBank, setQuickBank] = useState('');
+
+  const getPartnerDisplayName = (partnerId) => {
+    const p = partners.find(item => item.id === partnerId);
+    if (p && p.name) return p.name;
+    if (partnerId === 'p-self') return 'Me (Self)';
+    if (partnerId === 'p-vishal') return 'Vishal';
+    if (partnerId === 'p-partner3') return 'Partner 3 (Rohit)';
+    return partnerId.replace(/^p-/, '').toUpperCase();
+  };
+
+  const createInitialPartners = (preset = '50-50') => {
+    if (!partners || partners.length === 0) return [];
+    
+    if (preset === '50-50') {
+      const selfIdx = partners.findIndex(p => p.isSelf);
+      const firstIdx = selfIdx !== -1 ? selfIdx : 0;
+      const secondIdx = partners.findIndex((_, idx) => idx !== firstIdx);
+      
+      return partners.map((p, i) => ({
+        partnerId: p.id,
+        percentage: (i === firstIdx || (secondIdx !== -1 && i === secondIdx)) ? 50 : 0
+      }));
+    }
+    
+    if (preset === '3-way') {
+      if (partners.length >= 3) {
+        return partners.map((p, i) => ({
+          partnerId: p.id,
+          percentage: i === 0 ? 34 : (i === 1 || i === 2 ? 33 : 0)
+        }));
+      } else {
+        const share = Math.floor(100 / partners.length);
+        return partners.map((p, i) => ({
+          partnerId: p.id,
+          percentage: i === 0 ? 100 - (share * (partners.length - 1)) : share
+        }));
+      }
+    }
+
+    // Solo preset (100% to Self)
+    const selfIdx = partners.findIndex(p => p.isSelf);
+    const mainIdx = selfIdx !== -1 ? selfIdx : 0;
+    return partners.map((p, i) => ({
+      partnerId: p.id,
+      percentage: i === mainIdx ? 100 : 0
+    }));
+  };
+
+  // Applications list
+  const [applications, setApplications] = useState([]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -60,24 +77,18 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
         setLotPrice(15000);
         setSharesPerLot(30);
       }
+
+      setApplications([
+        {
+          id: `app-${Date.now()}-1`,
+          applicantPartnerId: partners.find(p => !p.isSelf)?.id || partners[0]?.id || '',
+          payerPartnerId: partners.find(p => p.isSelf)?.id || partners[0]?.id || '',
+          lots: 1,
+          partners: createInitialPartners('50-50')
+        }
+      ]);
     }
   }, [isOpen, initialData]);
-
-  // Quick Add Partner/Account state
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickName, setQuickName] = useState('');
-  const [quickBank, setQuickBank] = useState('');
-
-  // Initial lot application
-  const [applications, setApplications] = useState(() => [
-    {
-      id: `app-${Date.now()}-1`,
-      applicantPartnerId: partners.find(p => !p.isSelf)?.id || partners[0]?.id || '',
-      payerPartnerId: partners.find(p => p.isSelf)?.id || partners[0]?.id || '',
-      lots: 1,
-      partners: createInitialPartners(partners, '50-50')
-    }
-  ]);
 
   if (!isOpen) return null;
 
@@ -104,7 +115,6 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
     addPartner(newPartner);
     addAccount(newAccount);
 
-    // Update current applications to include the new partner in sliders
     setApplications(prev => prev.map(app => ({
       ...app,
       partners: [...app.partners, { partnerId: newPartnerId, percentage: 0 }]
@@ -123,7 +133,7 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
         applicantPartnerId: partners[0]?.id || '',
         payerPartnerId: partners.find(p => p.isSelf)?.id || partners[0]?.id || '',
         lots: 1,
-        partners: createInitialPartners(partners, '50-50')
+        partners: createInitialPartners('50-50')
       }
     ]);
   };
@@ -137,10 +147,41 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
     setApplications(prev => prev.map((app, i) => i === index ? { ...app, [field]: value } : app));
   };
 
-  const handlePresetSplit = (appIndex, presetType) => {
+  const handleTogglePartnerInclusion = (appIndex, partnerId) => {
     setApplications(prev => prev.map((app, idx) => {
       if (idx !== appIndex) return app;
-      return { ...app, partners: createInitialPartners(partners, presetType) };
+
+      const current = app.partners.map(p => ({ ...p }));
+      const pIdx = current.findIndex(p => p.partnerId === partnerId);
+      if (pIdx === -1) return app;
+
+      const isCurrentlyIncluded = current[pIdx].percentage > 0;
+
+      if (isCurrentlyIncluded) {
+        // Exclude partner (set 0%)
+        current[pIdx].percentage = 0;
+      } else {
+        // Include partner (give minimum 10%)
+        current[pIdx].percentage = 10;
+      }
+
+      // Rebalance among active included partners
+      const active = current.filter(p => p.percentage > 0);
+      if (active.length > 0) {
+        const share = Math.floor(100 / active.length);
+        const remainder = 100 - (share * active.length);
+        
+        current.forEach(p => {
+          if (p.percentage > 0) p.percentage = share;
+        });
+
+        if (remainder > 0) {
+          const firstActive = current.find(p => p.percentage > 0);
+          if (firstActive) firstActive.percentage += remainder;
+        }
+      }
+
+      return { ...app, partners: current };
     }));
   };
 
@@ -148,7 +189,7 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
     setApplications(prev => prev.map((app, idx) => {
       if (idx !== appIndex) return app;
       const active = app.partners.filter(p => p.percentage > 0);
-      if (active.length === 0) return { ...app, partners: createInitialPartners(partners, '50-50') };
+      if (active.length === 0) return { ...app, partners: createInitialPartners('50-50') };
       
       const equalShare = Math.floor(100 / active.length);
       const remainder = 100 - (equalShare * active.length);
@@ -187,18 +228,18 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
 
       currentPartners[changedIndex].percentage = targetPct;
 
-      const otherPartners = currentPartners.filter(p => p.partnerId !== partnerId);
-      const otherSum = otherPartners.reduce((acc, p) => acc + p.percentage, 0);
+      const activeOtherPartners = currentPartners.filter(p => p.partnerId !== partnerId && p.percentage > 0);
+      const otherSum = activeOtherPartners.reduce((acc, p) => acc + p.percentage, 0);
 
-      if (otherPartners.length > 0) {
+      if (activeOtherPartners.length > 0) {
         const remainingToDistribute = 100 - targetPct;
 
         if (otherSum === 0) {
-          otherPartners[0].percentage = remainingToDistribute;
+          activeOtherPartners[0].percentage = remainingToDistribute;
         } else {
           let allocated = 0;
-          otherPartners.forEach((p, i) => {
-            if (i === otherPartners.length - 1) {
+          activeOtherPartners.forEach((p, i) => {
+            if (i === activeOtherPartners.length - 1) {
               p.percentage = Math.max(0, remainingToDistribute - allocated);
             } else {
               const share = Math.round((p.percentage / otherSum) * remainingToDistribute);
@@ -251,14 +292,14 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-fade-in my-8">
         
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
           <div>
             <h2 className="font-extrabold text-lg text-white">Apply New Multi-Account IPO</h2>
-            <p className="text-xs text-slate-400">Configure application accounts, upfront payer, and partnership split</p>
+            <p className="text-xs text-slate-400">Select participating partners and configure investment split</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
             <X className="w-5 h-5" />
@@ -316,7 +357,7 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   type="text"
-                  placeholder="Partner / Owner Name (e.g. Ankit, Rohit)"
+                  placeholder="Partner Name (e.g. Rahul, Suresh, Ankit)"
                   value={quickName}
                   onChange={(e) => setQuickName(e.target.value)}
                   className="px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
@@ -346,13 +387,14 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
                 className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Another Lot Application</span>
+                <span>Add Another Application</span>
               </button>
             </div>
 
             {applications.map((app, idx) => {
               const currentTotal = app.partners.reduce((sum, p) => sum + p.percentage, 0);
               const isBalanced = currentTotal === 100;
+              const activePartnersCount = app.partners.filter(p => p.percentage > 0).length;
 
               return (
                 <div key={app.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4 relative">
@@ -390,11 +432,12 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
                         className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                       >
                         {partners.map(p => {
+                          const name = getPartnerDisplayName(p.id);
                           const pAcc = accounts.find(a => a.partnerId === p.id);
                           const detail = pAcc ? ` (${pAcc.name})` : p.upiOrBank ? ` (${p.upiOrBank})` : '';
                           return (
                             <option key={p.id} value={p.id}>
-                              {p.name} {p.isSelf ? '(You)' : ''}{detail}
+                              {name} {p.isSelf ? '(You)' : ''}{detail}
                             </option>
                           );
                         })}
@@ -419,11 +462,12 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
                         className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
                       >
                         {partners.map(p => {
+                          const name = getPartnerDisplayName(p.id);
                           const pAcc = accounts.find(a => a.partnerId === p.id);
                           const detail = pAcc ? ` (${pAcc.name})` : p.upiOrBank ? ` (${p.upiOrBank})` : '';
                           return (
                             <option key={p.id} value={p.id}>
-                              {p.name} {p.isSelf ? '(You)' : ''}{detail}
+                              {name} {p.isSelf ? '(You)' : ''}{detail}
                             </option>
                           );
                         })}
@@ -431,11 +475,12 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
                     </div>
                   </div>
 
-                  {/* Split Presets */}
-                  <div className="space-y-2 pt-2">
+                  {/* Partnership Inclusion Checklist & Sliders */}
+                  <div className="space-y-3 pt-2">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center space-x-2">
-                        <label className="text-xs font-medium text-slate-400">Partnership Share Split:</label>
+                        <Users className="w-4 h-4 text-indigo-400" />
+                        <label className="text-xs font-bold text-white">Participating Partners ({activePartnersCount} Active):</label>
                         <span className={`px-2 py-0.5 text-[10px] font-mono font-extrabold rounded-full border ${
                           isBalanced
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
@@ -445,62 +490,74 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
                         </span>
                       </div>
 
-                      <div className="flex items-center space-x-1">
-                        {!isBalanced && (
-                          <button
-                            type="button"
-                            onClick={() => handleAutoBalance(idx)}
-                            className="px-2 py-0.5 text-[11px] rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow transition-all mr-1"
-                          >
-                            Auto-Balance to 100%
-                          </button>
-                        )}
+                      {!isBalanced && (
                         <button
                           type="button"
-                          onClick={() => handlePresetSplit(idx, '50-50')}
-                          className="px-2 py-0.5 text-[11px] rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30 font-semibold"
+                          onClick={() => handleAutoBalance(idx)}
+                          className="px-2.5 py-1 text-[11px] rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow transition-all"
                         >
-                          50–50 Split
+                          Auto-Balance to 100%
                         </button>
-                        {partners.length >= 3 && (
-                          <button
-                            type="button"
-                            onClick={() => handlePresetSplit(idx, '3-way')}
-                            className="px-2 py-0.5 text-[11px] rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30 font-semibold"
-                          >
-                            3-Way Split
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handlePresetSplit(idx, 'solo')}
-                          className="px-2 py-0.5 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 font-semibold"
-                        >
-                          100% Solo
-                        </button>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Individual Sliders */}
-                    <div className="space-y-2 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
-                      {app.partners.map(pt => {
-                        const pName = partners.find(p => p.id === pt.partnerId)?.name || pt.partnerId;
+                    {/* Partner Selection Chips */}
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {partners.map(p => {
+                        const name = getPartnerDisplayName(p.id);
+                        const pState = app.partners.find(pt => pt.partnerId === p.id);
+                        const isIncluded = pState && pState.percentage > 0;
+
                         return (
-                          <div key={pt.partnerId} className="flex items-center justify-between space-x-3 text-xs">
-                            <span className="w-28 text-slate-300 font-semibold truncate">{pName}</span>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              step="5"
-                              value={pt.percentage}
-                              onChange={(e) => handlePartnerPercentageChange(idx, pt.partnerId, e.target.value)}
-                              className="flex-1 accent-indigo-500"
-                            />
-                            <span className="w-12 text-right font-mono font-bold text-indigo-400">{pt.percentage}%</span>
-                          </div>
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleTogglePartnerInclusion(idx, p.id)}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                              isIncluded
+                                ? 'bg-indigo-600/30 text-indigo-200 border-indigo-500/50 shadow-md'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[9px] ${
+                              isIncluded ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-slate-600'
+                            }`}>
+                              {isIncluded ? '✓' : ''}
+                            </span>
+                            <span>{name}</span>
+                          </button>
                         );
                       })}
+                    </div>
+
+                    {/* Active Sliders List */}
+                    <div className="space-y-2.5 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                      {app.partners
+                        .filter(pt => pt.percentage > 0)
+                        .map(pt => {
+                          const name = getPartnerDisplayName(pt.partnerId);
+                          return (
+                            <div key={pt.partnerId} className="flex items-center justify-between space-x-3 text-xs">
+                              <span className="w-32 text-white font-bold truncate">{name}</span>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="5"
+                                value={pt.percentage}
+                                onChange={(e) => handlePartnerPercentageChange(idx, pt.partnerId, e.target.value)}
+                                className="flex-1 accent-indigo-500"
+                              />
+                              <span className="w-12 text-right font-mono font-extrabold text-indigo-400 text-sm">{pt.percentage}%</span>
+                            </div>
+                          );
+                        })}
+
+                      {activePartnersCount === 0 && (
+                        <p className="text-xs text-amber-400 italic text-center py-1">
+                          No partners selected yet. Click any partner chip above to include them!
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -532,7 +589,7 @@ export default function ApplicationModal({ isOpen, onClose, initialData }) {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
             >
               Confirm Application & Block Capital
             </button>
