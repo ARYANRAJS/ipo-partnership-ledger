@@ -3,6 +3,23 @@
  */
 
 /**
+ * Formats numbers into Indian Currency format (e.g. ₹1,50,000)
+ */
+export function formatINR(amount) {
+  if (amount === undefined || amount === null || isNaN(amount)) return '₹0';
+  const val = Number(amount);
+  const isNegative = val < 0;
+  const absVal = Math.abs(val);
+
+  const formatted = absVal.toLocaleString('en-IN', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0
+  });
+
+  return `${isNegative ? '-' : ''}₹${formatted}`;
+}
+
+/**
  * Calculates net financial balances across all IPO applications and manual settlements.
  * Returns pairwise matrix of "who owes whom how much" and individual summary metrics.
  */
@@ -52,14 +69,27 @@ export function calculateLedger(ipos, partners, settlements = []) {
 
         partnersList.forEach(pt => {
           const sharePct = pt.percentage / 100;
-          const targetGain = netProfit * sharePct; // target profit or loss share
+          const partnerProfitShare = netProfit * sharePct;
+          const partnerCapShare = lotAmount * sharePct;
 
-          let actualNetCash = 0;
-          if (pt.partnerId === payerId) actualNetCash -= lotAmount; // Paid upfront
-          if (pt.partnerId === receiverId) actualNetCash += totalSaleAmount; // Received proceeds
-
-          const netDue = targetGain - actualNetCash;
-          appBalance[pt.partnerId] += netDue;
+          if (payerId === receiverId) {
+            // Same person paid and received. Receiver holds net profit belonging to partners
+            if (pt.partnerId === receiverId) {
+              // Receiver owes other partners their profit share
+              const dueToOthers = netProfit - partnerProfitShare;
+              appBalance[pt.partnerId] = -dueToOthers;
+            } else {
+              // Non-receiver is owed their profit share
+              appBalance[pt.partnerId] = partnerProfitShare;
+            }
+          } else {
+            // Different payer and receiver: calculate exact net due
+            let cashIn = pt.partnerId === receiverId ? totalSaleAmount : 0;
+            let cashOut = pt.partnerId === payerId ? lotAmount : 0;
+            let netEntitlement = partnerCapShare + partnerProfitShare;
+            let netDue = netEntitlement - (cashIn - cashOut);
+            appBalance[pt.partnerId] = netDue;
+          }
         });
       }
 
@@ -107,11 +137,11 @@ export function calculateLedger(ipos, partners, settlements = []) {
 }
 
 /**
- * Given net balances, calculates minimum direct transaction pairs (e.g. "Vishal owes Me ₹17,500")
+ * Greedy graph algorithm to simplify net balances into minimum transactions between partners.
  */
 function simplifyDebts(balances, partners) {
-  const debtors = [];   // negative balance (owes money)
-  const creditors = []; // positive balance (receives money)
+  const debtors = []; // People who owe money (negative balance)
+  const creditors = []; // People who are owed money (positive balance)
 
   Object.keys(balances).forEach(pId => {
     const bal = Math.round(balances[pId]);
@@ -122,6 +152,9 @@ function simplifyDebts(balances, partners) {
     }
   });
 
+  debtors.sort((a, b) => b.amount - a.amount);
+  creditors.sort((a, b) => b.amount - a.amount);
+
   const transactions = [];
   let dIdx = 0;
   let cIdx = 0;
@@ -129,101 +162,28 @@ function simplifyDebts(balances, partners) {
   while (dIdx < debtors.length && cIdx < creditors.length) {
     const debtor = debtors[dIdx];
     const creditor = creditors[cIdx];
-    const settlementAmount = Math.min(debtor.amount, creditor.amount);
 
-    if (settlementAmount > 0) {
-      const debtorPartner = partners.find(p => p.id === debtor.id) || { name: debtor.id };
-      const creditorPartner = partners.find(p => p.id === creditor.id) || { name: creditor.id };
+    const settledAmount = Math.min(debtor.amount, creditor.amount);
+
+    if (settledAmount > 0) {
+      const fromName = partners.find(p => p.id === debtor.id)?.name || debtor.id;
+      const toName = partners.find(p => p.id === creditor.id)?.name || creditor.id;
 
       transactions.push({
-        fromId: debtor.id,
-        fromName: debtorPartner.name,
-        toId: creditor.id,
-        toName: creditorPartner.name,
-        amount: Math.round(settlementAmount)
+        fromPartnerId: debtor.id,
+        fromPartnerName: fromName,
+        toPartnerId: creditor.id,
+        toPartnerName: toName,
+        amount: settledAmount
       });
     }
 
-    debtor.amount -= settlementAmount;
-    creditor.amount -= settlementAmount;
+    debtor.amount -= settledAmount;
+    creditor.amount -= settledAmount;
 
     if (debtor.amount <= 1) dIdx++;
     if (creditor.amount <= 1) cIdx++;
   }
 
   return transactions;
-}
-
-/**
- * Calculate Global Top-Level Dashboard Metrics
- */
-export function calculateDashboardMetrics(ipos, partners) {
-  let totalBlocked = 0;
-  let totalInvestedAllotted = 0;
-  let totalRealizedProfit = 0;
-  let totalRealizedLoss = 0;
-  let totalApplicationsCount = 0;
-  let allottedCount = 0;
-  let unallottedCount = 0;
-  let recycledFundsPool = 0; // Money from NOT_ALLOTTED that hasn't been re-invested yet
-
-  ipos.forEach(ipo => {
-    (ipo.applications || []).forEach(app => {
-      totalApplicationsCount++;
-      const amt = app.amount || (ipo.lotPrice * (app.lots || 1));
-
-      if (app.status === "BLOCKED") {
-        totalBlocked += amt;
-      } else if (app.status === "ALLOTTED") {
-        totalInvestedAllotted += amt;
-        allottedCount++;
-      } else if (app.status === "NOT_ALLOTTED") {
-        unallottedCount++;
-        // If not re-invested to another app yet, count in recycled pool
-        if (!app.reinvestedToAppId) {
-          recycledFundsPool += amt;
-        }
-      } else if (app.status === "SOLD") {
-        allottedCount++;
-        if (app.exitDetails) {
-          const saleAmt = Number(app.exitDetails.totalSaleAmount || 0);
-          const pnl = saleAmt - amt;
-          if (pnl >= 0) {
-            totalRealizedProfit += pnl;
-          } else {
-            totalRealizedLoss += Math.abs(pnl);
-          }
-        }
-      }
-    });
-  });
-
-  const netRealizedPnL = totalRealizedProfit - totalRealizedLoss;
-  const allotmentRate = totalApplicationsCount > 0 
-    ? Math.round((allottedCount / totalApplicationsCount) * 100) 
-    : 0;
-
-  return {
-    totalBlocked,
-    totalInvestedAllotted,
-    totalRealizedProfit,
-    totalRealizedLoss,
-    netRealizedPnL,
-    totalApplicationsCount,
-    allottedCount,
-    unallottedCount,
-    allotmentRate,
-    recycledFundsPool
-  };
-}
-
-/**
- * Format Indian Currency Format (₹ 1,50,000)
- */
-export function formatINR(val) {
-  const num = Math.round(Number(val) || 0);
-  const isNegative = num < 0;
-  const absNum = Math.abs(num);
-  const formatted = new Intl.NumberFormat('en-IN').format(absNum);
-  return `${isNegative ? '-' : ''}₹${formatted}`;
 }
