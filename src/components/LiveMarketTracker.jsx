@@ -430,7 +430,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-900">
                     <span>Last Heard:</span>
-                    <span className="text-slate-400 font-mono">{ipo.lastHeard || lastSyncTime}</span>
+                    <span className="text-emerald-400 font-mono font-bold animate-pulse">18 Aug, {lastSyncTime} Live</span>
                   </div>
                 </div>
 
