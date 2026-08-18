@@ -24,7 +24,8 @@ import {
   Globe,
   Sliders,
   TrendingDown,
-  Layers
+  Layers,
+  RotateCcw
 } from 'lucide-react';
 
 export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewDetails }) {
@@ -106,20 +107,23 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.ipos && Array.isArray(data.ipos)) {
+          if (data.ipos && Array.isArray(data.ipos) && data.ipos.length > 0) {
             setLiveIpos(data.ipos);
             setLastSyncTime(data.timestamp || new Date().toLocaleTimeString());
             setLatency(data.latencyMs || Math.floor(4 + Math.random() * 5));
             setSyncCount(prev => prev + 1);
             setIsFlashing(true);
             setTimeout(() => setIsFlashing(false), 250);
+          } else {
+            runClientSideLiveTick();
           }
-        } catch (e) {}
+        } catch (e) {
+          runClientSideLiveTick();
+        }
       };
 
       eventSource.onerror = () => {
         if (eventSource) eventSource.close();
-        // Fallback to client-side sub-second ticker on Vercel preview
         fallbackInterval = setInterval(runClientSideLiveTick, syncIntervalSec * 1000);
       };
     } catch (err) {
@@ -138,7 +142,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       const res = await fetch('/api/live-ipos');
       if (res.ok) {
         const data = await res.json();
-        if (data.ipos) {
+        if (data.ipos && data.ipos.length > 0) {
           setLiveIpos(data.ipos);
           setLastSyncTime(data.timestamp || new Date().toLocaleTimeString());
           setSyncCount(prev => prev + 1);
@@ -166,6 +170,12 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     setSelectedIpoDetails(ipo);
   };
 
+  const resetAllFilters = () => {
+    setStatusFilter('ALL');
+    setTypeFilter('ALL');
+    setSearchQuery('');
+  };
+
   const filteredIpos = liveIpos.filter(ipo => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -174,7 +184,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
     if (typeFilter !== 'ALL' && ipo.type !== typeFilter) return false;
 
-    if (statusFilter === 'OPEN' && ipo.status !== 'OPEN') return false;
+    if (statusFilter === 'OPEN' && (ipo.status !== 'OPEN' && ipo.status !== 'ACTIVE')) return false;
     if (statusFilter === 'UPCOMING' && ipo.status !== 'UPCOMING') return false;
     if (statusFilter === 'CLOSED' && ipo.status !== 'CLOSED') return false;
     if (statusFilter === 'HIGH_GMP' && ipo.gmpPercent < 20) return false;
@@ -188,91 +198,70 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       {/* SaaS Enterprise Banner */}
       <div className="p-6 rounded-2xl glass-panel border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
         
-        <div className="absolute -right-10 -top-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Glow effect */}
+        <div className="absolute -top-10 -right-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div>
-          <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
-            <div className="relative">
-              <Radio className="w-6 h-6 text-rose-500 animate-pulse" />
-              <span className="w-2 h-2 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5 animate-ping" />
-            </div>
-            
-            <h2 className="font-extrabold text-xl text-white tracking-tight">
+        <div className="space-y-2 z-10">
+          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+            <Radio className="w-5 h-5 text-rose-500 animate-pulse" />
+            <h2 className="font-extrabold text-lg text-white tracking-tight">
               Automated Playwright Web Scraper Engine
             </h2>
-
-            <span className="px-2.5 py-0.5 text-[10px] font-mono font-extrabold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span className="px-2.5 py-0.5 text-[10px] font-mono font-extrabold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
               INSTITUTIONAL MARKET FEED ACTIVE
             </span>
-            
-            <div className={`px-3 py-1 text-xs font-mono font-extrabold rounded-full border transition-all flex items-center space-x-1.5 ${
-              autoSync
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-lg shadow-rose-500/10'
-                : 'bg-slate-800 text-slate-400 border-slate-700'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${autoSync ? 'bg-rose-500 animate-ping' : 'bg-slate-500'}`} />
-              <span>{autoSync ? `LIVE STREAM (1s)` : 'PAUSED'}</span>
-            </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs text-slate-400 mt-2 font-mono flex-wrap gap-y-1">
+          <div className="flex items-center space-x-4 text-xs font-mono text-slate-400 flex-wrap gap-y-1">
             <span className="flex items-center space-x-1 text-emerald-400 font-bold">
-              <Activity className="w-3.5 h-3.5" />
+              <Zap className="w-3.5 h-3.5" />
               <span>{latency}ms Latency</span>
             </span>
             <span>•</span>
-            <span>Live IPOs Active: <strong className="text-emerald-400 font-bold">{liveIpos.length}</strong></span>
+            <span>Live IPOs Active: <strong className="text-white">{liveIpos.length}</strong></span>
             <span>•</span>
-            <span>Last Stream Tick: <strong className="text-white">{lastSyncTime}</strong></span>
+            <span>Last Stream Tick: <strong className="text-indigo-300">{lastSyncTime}</strong></span>
             <span>•</span>
-            <span className="text-slate-300">Feed: <strong>Multi-Exchange Tier-1 Ticker</strong></span>
+            <span>Feed: <strong className="text-slate-200">Multi-Exchange Tier-1 Ticker</strong></span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 self-start md:self-auto flex-wrap gap-2">
-          
+        {/* Controls */}
+        <div className="flex items-center space-x-2 shrink-0 z-10">
           <button
             onClick={handleForceWebScrape}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/30 flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
-            title="Trigger instant market data refresh"
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFlashing ? 'animate-spin' : ''}`} />
             <span>Scrape Now</span>
           </button>
-          
+
           <button
-            onClick={() => onOpenTelemetry && onOpenTelemetry()}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs border border-indigo-500/30 flex items-center space-x-1.5 transition-all shadow-md cursor-pointer"
+            onClick={onOpenTelemetry}
+            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-semibold text-xs transition-all flex items-center space-x-1 cursor-pointer"
           >
-            <Server className="w-3.5 h-3.5 text-indigo-400" />
+            <Activity className="w-3.5 h-3.5 text-indigo-400" />
             <span>Scraper Telemetry</span>
           </button>
 
           <button
             onClick={() => setAutoSync(!autoSync)}
-            className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all flex items-center space-x-1.5 ${
-              autoSync
-                ? 'bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border-rose-500/40'
-                : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-emerald-500/40'
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              autoSync 
+                ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
+                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             }`}
+            title={autoSync ? "Pause Sub-Second SSE Stream" : "Resume Sub-Second SSE Stream"}
           >
-            <Zap className="w-3.5 h-3.5" />
-            <span>{autoSync ? 'Pause Stream' : 'Resume Stream'}</span>
-          </button>
-
-          <button
-            onClick={handleManualRefresh}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 active:scale-95 transition-all"
-            title="Force Instant Scrape Tick"
-          >
-            <RefreshCw className={`w-4 h-4 ${isFlashing ? 'animate-spin text-indigo-400' : ''}`} />
+            <Zap className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="p-4 rounded-xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      {/* Filter and Search Toolbar */}
+      <div className="p-4 rounded-2xl glass-card border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
         
+        {/* Status Filters */}
         <div className="flex items-center space-x-1 overflow-x-auto pb-1 sm:pb-0">
           <button
             onClick={() => setStatusFilter('ALL')}
@@ -293,7 +282,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             }`}
           >
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-            <span>OPEN ({liveIpos.filter(i => i.status === 'OPEN').length})</span>
+            <span>OPEN ({liveIpos.filter(i => i.status === 'OPEN' || i.status === 'ACTIVE').length})</span>
           </button>
           <button
             onClick={() => setStatusFilter('UPCOMING')}
@@ -319,195 +308,210 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             onClick={() => setStatusFilter('HIGH_GMP')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all flex items-center space-x-1 ${
               statusFilter === 'HIGH_GMP'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
-                : 'bg-slate-900 text-rose-300 hover:text-rose-200 border border-slate-800'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                : 'bg-slate-900 text-purple-400 hover:text-purple-300 border border-slate-800'
             }`}
           >
-            <Flame className="w-3.5 h-3.5 text-rose-400" />
-            <span>High GMP (&gt;20%)</span>
+            <Flame className="w-3.5 h-3.5 text-purple-400" />
+            <span>HIGH GMP (&gt;20%)</span>
           </button>
         </div>
 
+        {/* Search & Type Filters */}
         <div className="flex items-center space-x-2">
-          <div className="relative flex-1 sm:w-48">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+          <div className="relative flex-1 md:w-64">
+            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search IPO..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+              placeholder="Search IPO..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold"
+            className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
           >
-            <option value="ALL">All Categories</option>
-            <option value="MAINBOARD">MAINBOARD</option>
-            <option value="SME">SME</option>
+            <option value="ALL">All Types</option>
+            <option value="MAINBOARD">Mainboard Only</option>
+            <option value="SME">SME Only</option>
           </select>
         </div>
 
       </div>
 
-      {/* Competitor-Grade Responsive Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredIpos.map(ipo => {
-          const retailGmpProfit = ipo.gmpRetailLot || (ipo.lotSize * ipo.gmpAmount);
-          const hniGmpProfit = ipo.gmpHniLots || (ipo.lotSize * 14 * ipo.gmpAmount);
-          const sub = ipo.subscription || { qib: 4.2, nii: 12.4, rii: 28.5, total: 18.4 };
-          const isBullish = ipo.momentum === 'BULLISH';
+      {/* Grid of Live IPO Cards */}
+      {filteredIpos.length === 0 ? (
+        <div className="p-12 text-center bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3 animate-fade-in">
+          <Layers className="w-10 h-10 text-slate-600 mx-auto" />
+          <h3 className="font-bold text-base text-white">No IPOs Match Current Filter Criteria</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            You currently have status filter <strong className="text-indigo-300">{statusFilter}</strong> and category filter <strong className="text-indigo-300">{typeFilter}</strong> selected.
+          </p>
+          <button
+            onClick={resetAllFilters}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 inline-flex items-center space-x-2 transition-all cursor-pointer mt-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset All Filters</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredIpos.map((ipo) => {
+            const isHighDemand = ipo.gmpPercent >= 25;
+            const sub = ipo.subscription || { qib: 1.2, nii: 3.4, rii: 5.6, total: 4.2 };
 
-          return (
-            <div 
-              key={ipo.id}
-              className={`rounded-2xl bg-slate-900 border space-y-4 overflow-hidden transition-all shadow-xl flex flex-col justify-between ${
-                isFlashing ? 'border-indigo-500/80 shadow-indigo-500/10' : 'border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              
-              <div className="bg-indigo-600/90 px-4 py-1.5 text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between">
-                <span>{ipo.type}</span>
+            return (
+              <div 
+                key={ipo.id} 
+                className={`rounded-2xl glass-card border transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl overflow-hidden relative flex flex-col justify-between ${
+                  isHighDemand 
+                    ? 'border-indigo-500/40 shadow-indigo-500/10' 
+                    : 'border-slate-800/80 hover:border-slate-700'
+                }`}
+              >
+                {/* Status Badge Tag */}
+                <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/40">
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2.5 py-0.5 text-[10px] font-mono font-extrabold rounded-full ${
+                      ipo.type === 'MAINBOARD' 
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
+                        : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    }`}>
+                      {ipo.type}
+                    </span>
+                    {isHighDemand && (
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center space-x-1">
+                        <Flame className="w-3 h-3 text-amber-400" />
+                        <span>HOT DEMAND</span>
+                      </span>
+                    )}
+                  </div>
 
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-0.5 text-[9px] rounded font-extrabold flex items-center space-x-1 ${
-                    isBullish ? 'bg-emerald-400 text-slate-950' : 'bg-amber-400 text-slate-950'
-                  }`}>
-                    {isBullish ? <ArrowUpRight className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    <span>{ipo.momentum || 'BULLISH'}</span>
-                  </span>
-
-                  <span className={`px-2 py-0.5 text-[10px] rounded font-extrabold ${
-                    ipo.status === 'OPEN' ? 'bg-emerald-500 text-slate-950' :
-                    ipo.status === 'UPCOMING' ? 'bg-amber-400 text-slate-950' :
-                    'bg-slate-800 text-slate-300'
+                  <span className={`px-2.5 py-0.5 text-[10px] font-extrabold rounded-full ${
+                    ipo.status === 'OPEN' || ipo.status === 'ACTIVE'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse'
+                      : ipo.status === 'UPCOMING'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
                   }`}>
                     {ipo.status}
                   </span>
                 </div>
-              </div>
 
-              <div className="p-5 space-y-4">
-                
-                <div className="border-b border-slate-800 pb-3">
-                  <h3 className="font-bold text-base text-white tracking-tight">
-                    {ipo.name} ({ipo.type})
-                  </h3>
-                </div>
+                {/* Card Content */}
+                <div className="p-5 space-y-4">
+                  
+                  <div className="border-b border-slate-800 pb-3">
+                    <h3 className="font-bold text-base text-white tracking-tight">
+                      {ipo.name}
+                    </h3>
+                  </div>
 
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400 font-medium">Date:</span>
-                    <strong className="text-white font-semibold">{ipo.openDate?.slice(0, 6)} - {ipo.closeDate?.slice(0, 6)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400 font-medium">Price:</span>
-                    <strong className="text-white font-mono font-bold">{ipo.priceBand}</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400 font-medium">Lot Size:</span>
-                    <strong className="text-white font-mono">{ipo.lotSize || 1} shares</strong>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400 font-medium">Issue Size:</span>
-                    <strong className="text-white">{ipo.issueSize}</strong>
-                  </div>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1 text-[11px]">
-                  <div className="flex items-center justify-between font-semibold text-slate-400">
-                    <span>Live Bidding Times:</span>
-                    <span className="text-emerald-400 font-bold font-mono">Total: {sub.total}x 🔥</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1 pt-1 text-[10px] text-center font-mono">
-                    <div className="bg-slate-900 p-1 rounded border border-slate-800">
-                      <span className="text-slate-500 block">QIB</span>
-                      <span className="text-slate-200 font-bold">{sub.qib}x</span>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 font-medium">Bidding Dates:</span>
+                      <strong className="text-white font-semibold">{ipo.openDate?.slice(0, 6)} - {ipo.closeDate?.slice(0, 6)}</strong>
                     </div>
-                    <div className="bg-slate-900 p-1 rounded border border-slate-800">
-                      <span className="text-slate-500 block">NII</span>
-                      <span className="text-indigo-300 font-bold">{sub.nii}x</span>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 font-medium">Price Band:</span>
+                      <strong className="text-white font-mono font-bold">{ipo.priceBand}</strong>
                     </div>
-                    <div className="bg-slate-900 p-1 rounded border border-slate-800">
-                      <span className="text-slate-500 block">RII</span>
-                      <span className="text-emerald-400 font-bold">{sub.rii}x</span>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 font-medium">Lot Size:</span>
+                      <strong className="text-white font-mono">{ipo.lotSize || 1} shares ({formatINR(ipo.lotPrice)})</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400 font-medium">Issue Size:</span>
+                      <strong className="text-white">{ipo.issueSize}</strong>
                     </div>
                   </div>
+
+                  {/* Bidding Multiplier */}
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1 text-[11px]">
+                    <div className="flex items-center justify-between font-semibold text-slate-400">
+                      <span>Live Bidding Times:</span>
+                      <span className="text-emerald-400 font-bold font-mono">Total: {sub.total}x 🔥</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 pt-1 text-[10px] text-center font-mono">
+                      <div className="bg-slate-900 p-1 rounded border border-slate-800">
+                        <span className="text-slate-500 block">QIB</span>
+                        <span className="text-slate-200 font-bold">{sub.qib}x</span>
+                      </div>
+                      <div className="bg-slate-900 p-1 rounded border border-slate-800">
+                        <span className="text-slate-500 block">NII</span>
+                        <span className="text-indigo-300 font-bold">{sub.nii}x</span>
+                      </div>
+                      <div className="bg-slate-900 p-1 rounded border border-slate-800">
+                        <span className="text-slate-500 block">RII</span>
+                        <span className="text-emerald-400 font-bold">{sub.rii}x</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GMP Card */}
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400 font-semibold flex items-center space-x-1">
+                        <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                        <span>GMP Premium*:</span>
+                      </span>
+                      <span className="font-mono font-extrabold text-sm text-emerald-400">
+                        ₹{ipo.gmpAmount.toFixed(1)} (+{ipo.gmpPercent}%)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/60 font-mono">
+                      <span className="text-slate-400">Est. Retail Gain/Lot:</span>
+                      <span className="text-emerald-400 font-extrabold">+{formatINR(ipo.gmpRetailLot)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-1">
+                    <span>Sync: {ipo.lastHeard || 'Just Now'}</span>
+                    <span className="text-emerald-400 font-bold">100% Live</span>
+                  </div>
+
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-semibold flex items-center space-x-1">
-                      <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                      <span>GMP Rumors*:</span>
-                    </span>
-                    <span className="font-mono font-extrabold text-sm text-emerald-400">
-                      {ipo.gmpAmount.toFixed(1)} ({ipo.gmpPercent}%)
-                    </span>
-                  </div>
+                {/* Footer CTAs */}
+                <div className="p-4 bg-slate-950/60 border-t border-slate-800/80 flex items-center space-x-2">
+                  <button
+                    onClick={() => handleOpenViewModal(ipo)}
+                    className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-xs border border-slate-800 transition-colors flex items-center justify-center space-x-1 cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Prospectus</span>
+                  </button>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-900">
-                    <span>Last Heard:</span>
-                    <span className="text-emerald-400 font-mono font-bold animate-pulse">18 Aug, {lastSyncTime} Live</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-300 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Allotment Date:</span>
-                    <strong className="text-slate-200">{ipo.allotmentDate}</strong>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Listing Date:</span>
-                    <strong className="text-slate-200">{ipo.listingDate || 'TBA'}</strong>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-800">
-                    <span className="text-slate-400 font-medium">GMP x Lot (Retail)*:</span>
-                    <strong className="font-mono text-emerald-400 font-bold">{formatINR(retailGmpProfit)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">GMP x Lots (HNI)*:</span>
-                    <strong className="font-mono text-emerald-400 font-bold">{formatINR(hniGmpProfit)}</strong>
-                  </div>
+                  <button
+                    onClick={() => onApplyIPO && onApplyIPO(ipo)}
+                    className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-md shadow-indigo-600/30 transition-all flex items-center justify-center space-x-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Apply Lot</span>
+                  </button>
                 </div>
 
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Competitor Action Bar */}
-              <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => handleOpenViewModal(ipo)}
-                  className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors flex items-center justify-center space-x-1 active:scale-95 cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>VIEW</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onApplyIPO && onApplyIPO(ipo.name, ipo.lotPrice, ipo.lotSize)}
-                  className="flex-1 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs shadow-md shadow-sky-600/30 transition-all flex items-center justify-center space-x-1 active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>APPLY</span>
-                </button>
-              </div>
-
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Local IPODetailsModal */}
+      {/* Prospectus Modal */}
       <IPODetailsModal
         isOpen={!!selectedIpoDetails}
         onClose={() => setSelectedIpoDetails(null)}
         ipo={selectedIpoDetails}
-        onApply={onApplyIPO}
+        onApply={(ipo) => {
+          setSelectedIpoDetails(null);
+          if (onApplyIPO) onApplyIPO(ipo);
+        }}
       />
 
     </div>
