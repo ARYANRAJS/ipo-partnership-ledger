@@ -57,27 +57,27 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
   ];
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl sticky top-0 z-40 font-sans shadow-xl">
+    <header className="border-b border-slate-800/80 bg-slate-950/95 backdrop-blur-xl sticky top-0 z-40 font-sans shadow-xl">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         
-        {/* Main Bar */}
-        <div className="flex items-center justify-between py-2.5 sm:py-3 min-h-[56px] sm:min-h-[64px]">
+        {/* Main Bar - Fixed Height to Prevent Overlap */}
+        <div className="flex items-center justify-between h-14 sm:h-16">
           
           {/* Left Zone: Brand Logo & Title */}
-          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 shrink">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5">
-                <h1 className="font-extrabold text-sm sm:text-base md:text-lg text-white tracking-tight truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">
-                  IPO Partnership Ledger
+                <h1 className="font-extrabold text-xs xs:text-sm sm:text-base md:text-lg text-white tracking-tight leading-tight truncate">
+                  IPO Ledger
                 </h1>
                 <span className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono font-extrabold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                   OFFLINE SECURE
                 </span>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-medium truncate max-w-[160px] sm:max-w-none">
+              <p className="hidden sm:block text-xs text-slate-400 font-medium truncate">
                 Capital & Settlement Tracker
               </p>
             </div>
@@ -90,17 +90,17 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
             <button
               onClick={() => onOpenCheckIPO && onOpenCheckIPO('')}
               title="Verify IPO Bids on official NSE / BSE exchange portals"
-              className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all shadow-md active:scale-95 cursor-pointer"
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             >
               <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline">Verify NSE Bids</span>
+              <span className="hidden sm:inline">Verify Bids</span>
               <span className="sm:hidden text-[11px]">Verify</span>
             </button>
 
             {/* Apply New IPO Primary CTA */}
             <button
               onClick={onOpenNewIPO}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-indigo-600/30 active:scale-95 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-indigo-600/30 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             >
               <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span className="hidden sm:inline">Apply New IPO</span>
@@ -108,10 +108,10 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
             </button>
 
             {/* Tools & Backup Dropdown Menu */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setIsToolsOpen(!isToolsOpen)}
-                className="p-1.5 sm:p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer flex items-center space-x-1"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer flex items-center space-x-1 shrink-0 whitespace-nowrap"
                 title="Data Tools & Options"
               >
                 <Settings className="w-4 h-4 text-slate-400 shrink-0" />
