@@ -112,6 +112,7 @@ function generateLiveStreamPayload() {
     const subTotal = Number(((subQib * 0.5) + (subNii * 0.15) + (subRii * 0.35)).toFixed(1));
 
     const momentum = wave > 0.2 ? 'BULLISH' : wave < -0.2 ? 'BEARISH' : 'STABLE';
+    const dynamicTimestamp = `18 Aug, ${timeStr} Live`;
 
     return {
       ...ipo,
@@ -119,7 +120,7 @@ function generateLiveStreamPayload() {
       gmpPercent: gmpPct,
       gmpRetailLot: retailGmpLot,
       gmpHniLots: hniGmpLot,
-      lastHeard: `${timeStr} (Live Scraped)`,
+      lastHeard: dynamicTimestamp,
       momentum,
       subscription: {
         qib: subQib,
