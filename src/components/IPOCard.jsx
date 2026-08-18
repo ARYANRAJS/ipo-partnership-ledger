@@ -17,7 +17,14 @@ import {
 export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onOpenCheckIPO }) {
   const { partners, accounts, updateApplicationStatus, deleteIPO } = useIPOLedger();
 
-  const getPartnerName = (id) => partners.find(p => p.id === id)?.name || id;
+  const getPartnerName = (id) => {
+    const p = partners.find(item => item.id === id);
+    if (p && p.name) return p.name;
+    if (id === 'p-self') return 'Me (Primary)';
+    if (id === 'p-vishal') return 'Vishal';
+    if (id === 'p-partner3') return 'Partner 3 (Rohit)';
+    return id ? id.replace(/^p-/, '').toUpperCase() : 'Unknown';
+  };
   const getAccountName = (id) => accounts.find(a => a.id === id)?.name || 'Default Bank';
 
   const handleDelete = () => {
