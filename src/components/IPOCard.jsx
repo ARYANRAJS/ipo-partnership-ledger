@@ -10,7 +10,8 @@ import {
   Sparkles,
   Trash2,
   Calendar,
-  ShieldCheck
+  ShieldCheck,
+  DollarSign
 } from 'lucide-react';
 
 export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onOpenCheckIPO }) {
