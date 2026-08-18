@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Trash2,
   ShieldCheck,
-  MoreVertical,
   ChevronDown,
   Settings
 } from 'lucide-react';
@@ -59,61 +58,64 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
 
   return (
     <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl sticky top-0 z-40 font-sans shadow-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         
         {/* Main Bar */}
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between py-2.5 sm:py-3 min-h-[56px] sm:min-h-[64px]">
           
           {/* Left Zone: Brand Logo & Title */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
-              <TrendingUp className="w-5 h-5 text-white" />
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
-                  IPO Partnership & Money Ledger
+            <div className="min-w-0">
+              <div className="flex items-center space-x-1.5">
+                <h1 className="font-extrabold text-sm sm:text-base md:text-lg text-white tracking-tight truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">
+                  IPO Partnership Ledger
                 </h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-extrabold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono font-extrabold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                   OFFLINE SECURE
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">Multi-Account Capital & Settlement Tracker</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium truncate max-w-[160px] sm:max-w-none">
+                Capital & Settlement Tracker
+              </p>
             </div>
           </div>
 
-          {/* Right Zone: Clean CTA Buttons & Tools Dropdown */}
-          <div className="flex items-center space-x-2.5">
+          {/* Right Zone: Responsive Actions & Tools Dropdown */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
             
             {/* Verify Bids Button */}
             <button
               onClick={() => onOpenCheckIPO && onOpenCheckIPO('')}
               title="Verify IPO Bids on official NSE / BSE exchange portals"
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all shadow-md active:scale-95 cursor-pointer"
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="hidden md:inline">Verify NSE Bids</span>
-              <span className="md:hidden">Verify</span>
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Verify NSE Bids</span>
+              <span className="sm:hidden text-[11px]">Verify</span>
             </button>
 
             {/* Apply New IPO Primary CTA */}
             <button
               onClick={onOpenNewIPO}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-indigo-600/30 active:scale-95 cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-indigo-600/30 active:scale-95 cursor-pointer whitespace-nowrap"
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>Apply New IPO</span>
+              <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="hidden sm:inline">Apply New IPO</span>
+              <span className="sm:hidden text-[11px]">+ Apply</span>
             </button>
 
             {/* Tools & Backup Dropdown Menu */}
             <div className="relative">
               <button
                 onClick={() => setIsToolsOpen(!isToolsOpen)}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer flex items-center space-x-1"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all active:scale-95 cursor-pointer flex items-center space-x-1"
                 title="Data Tools & Options"
               >
-                <Settings className="w-4 h-4 text-slate-400" />
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
+                <Settings className="w-4 h-4 text-slate-400 shrink-0" />
+                <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 transition-transform ${isToolsOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isToolsOpen && (
@@ -138,7 +140,7 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
                       }}
                       className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-left text-xs font-semibold text-slate-200 flex items-center space-x-2 transition-colors cursor-pointer"
                     >
-                      <Download className="w-4 h-4 text-indigo-400" />
+                      <Download className="w-4 h-4 text-indigo-400 shrink-0" />
                       <span>Export JSON Backup</span>
                     </button>
 
@@ -148,7 +150,7 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
                       }}
                       className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-left text-xs font-semibold text-slate-200 flex items-center space-x-2 transition-colors cursor-pointer"
                     >
-                      <Upload className="w-4 h-4 text-emerald-400" />
+                      <Upload className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>Restore JSON Backup</span>
                     </button>
 
@@ -165,7 +167,7 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
                       }}
                       className="w-full px-3 py-2 rounded-xl hover:bg-rose-500/10 text-left text-xs font-semibold text-rose-300 flex items-center space-x-2 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4 text-rose-400" />
+                      <Trash2 className="w-4 h-4 text-rose-400 shrink-0" />
                       <span>Clear All Dummy Data</span>
                     </button>
 
@@ -176,7 +178,7 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
                       }}
                       className="w-full px-3 py-2 rounded-xl hover:bg-slate-800 text-left text-xs font-semibold text-slate-400 hover:text-amber-300 flex items-center space-x-2 transition-colors cursor-pointer"
                     >
-                      <RotateCcw className="w-4 h-4 text-amber-400" />
+                      <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
                       <span>Reset Interactive Demo</span>
                     </button>
 
@@ -196,8 +198,8 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
           </div>
         </div>
 
-        {/* Navigation Bar */}
-        <div className="flex items-center space-x-1 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-1">
+        {/* Navigation Ribbon Bar */}
+        <div className="flex items-center space-x-1 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-1.5 w-full">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -205,13 +207,13 @@ export default function Header({ onOpenNewIPO, onOpenCheckIPO }) {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-md'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
                 <span>{item.label}</span>
               </button>
             );
