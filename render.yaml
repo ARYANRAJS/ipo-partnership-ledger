@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ipo-partnership-ledger-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: "npm install && npx playwright install chromium"
+    startCommand: "node server.mjs"
+    envVars:
+      - key: PORT
+        value: 10000
