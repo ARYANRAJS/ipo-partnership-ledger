@@ -1,16 +1,16 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/live-ipos/stream",
-      "dest": "https://ipo-backend-nugn.onrender.com/api/live-ipos/stream"
+      "source": "/api/live-ipos/stream",
+      "destination": "https://ipo-backend-nugn.onrender.com/api/live-ipos/stream"
     },
     {
-      "src": "/api/live-ipos",
-      "dest": "https://ipo-backend-nugn.onrender.com/api/live-ipos"
+      "source": "/api/live-ipos",
+      "destination": "https://ipo-backend-nugn.onrender.com/api/live-ipos"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/api/:path*",
+      "destination": "https://ipo-backend-nugn.onrender.com/api/:path*"
     }
   ]
 }
