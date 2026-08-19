@@ -17,6 +17,7 @@ import {
   Scale
 } from 'lucide-react';
 
+// Fresh production build bundle trigger
 export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleModal }) {
   const { 
     metrics, 
