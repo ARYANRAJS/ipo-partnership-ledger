@@ -23,7 +23,8 @@ import {
   Sliders,
   TrendingDown,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 
 const RENDER_BACKEND_URL = "https://ipo-backend-nugn.onrender.com";
@@ -43,8 +44,32 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
   const [latency, setLatency] = useState(4);
   const [isFlashing, setIsFlashing] = useState(false);
   const [isConnectedToRender, setIsConnectedToRender] = useState(false);
+  const [nowTime, setNowTime] = useState(new Date());
 
-  // Helper to format today's live date (e.g. "19 Aug, 02:00:25 PM Live")
+  // Helper to calculate Reverse Bidding Countdown to 5:00 PM
+  const getReverseCountdownText = (ipo) => {
+    if (ipo.status !== 'OPEN' && ipo.status !== 'ACTIVE') return null;
+
+    const target5PM = new Date();
+    target5PM.setHours(17, 0, 0, 0);
+
+    const diffMs = target5PM.getTime() - nowTime.getTime();
+    if (diffMs <= 0) {
+      return { isClosed: true, text: "Closed 5:00 PM" };
+    }
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    return {
+      isClosed: false,
+      text: `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`
+    };
+  };
+
+  // Helper to format today's live date string
   const getTodayLiveString = () => {
     const d = new Date();
     const dayMonth = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -52,7 +77,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     return `${dayMonth}, ${timeStr} Live`;
   };
 
-  // Continuous Sub-Second Live Ticker Engine
+  // Continuous Sub-Second Live Ticker & Reverse Timer Engine
   useEffect(() => {
     if (!autoSync) return;
 
@@ -61,6 +86,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
     const runClientSideLiveTick = () => {
       const now = new Date();
+      setNowTime(now);
       const timeStr = now.toLocaleTimeString();
       const liveString = getTodayLiveString();
 
@@ -386,12 +412,15 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
           {filteredIpos.map((ipo) => {
             const isHighDemand = ipo.gmpPercent >= 25;
             const sub = ipo.subscription || { qib: 1.2, nii: 3.4, rii: 5.6, total: 4.2 };
+            const countdownInfo = getReverseCountdownText(ipo);
 
             return (
               <div 
                 key={ipo.id} 
                 className={`rounded-2xl glass-card border transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl overflow-hidden relative flex flex-col justify-between ${
-                  isHighDemand 
+                  ipo.isLastDayToday
+                    ? 'border-rose-500/60 shadow-rose-500/20'
+                    : isHighDemand 
                     ? 'border-indigo-500/40 shadow-indigo-500/10' 
                     : 'border-slate-800/80 hover:border-slate-700'
                 }`}
@@ -425,6 +454,19 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                   </span>
                 </div>
 
+                {/* LAST DAY TODAY Urgency Banner */}
+                {ipo.isLastDayToday && (
+                  <div className="mx-4 mt-3 p-2 rounded-xl bg-gradient-to-r from-rose-500/20 via-amber-500/20 to-rose-500/20 border border-rose-500/40 flex items-center justify-between text-xs animate-pulse">
+                    <span className="font-extrabold text-rose-300 flex items-center space-x-1">
+                      <Flame className="w-4 h-4 text-rose-400 animate-bounce" />
+                      <span>LAST DAY TODAY 🚨</span>
+                    </span>
+                    <span className="font-mono font-bold text-amber-300">
+                      Closes 5:00 PM
+                    </span>
+                  </div>
+                )}
+
                 {/* Card Content */}
                 <div className="p-5 space-y-4">
                   
@@ -452,6 +494,20 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                       <strong className="text-white">{ipo.issueSize}</strong>
                     </div>
                   </div>
+
+                  {/* Reverse Countdown Timer to 5:00 PM Closing */}
+                  {countdownInfo && (
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-amber-500/30 flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-semibold flex items-center space-x-1">
+                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
+                        <span>Bidding Countdown:</span>
+                      </span>
+                      <span className="font-mono font-extrabold text-rose-300 bg-rose-500/10 px-2.5 py-0.5 rounded border border-rose-500/30 flex items-center space-x-1">
+                        <span>⏳</span>
+                        <span>{countdownInfo.text}</span>
+                      </span>
+                    </div>
+                  )}
 
                   {/* Bidding Multiplier */}
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1 text-[11px]">
