@@ -115,9 +115,6 @@ export function calculateLedger(ipos, partners, settlements = []) {
   // Factor in manual direct settlements between partners
   settlements.forEach(s => {
     const amount = Number(s.amount || 0);
-    // fromPartnerId paid toPartnerId
-    // fromPartnerId's debt REDUCES (becomes more positive)
-    // toPartnerId's receivable REDUCES (becomes less positive)
     if (balances[s.fromPartnerId] !== undefined) {
       balances[s.fromPartnerId] += amount;
     }
@@ -186,4 +183,47 @@ function simplifyDebts(balances, partners) {
   }
 
   return transactions;
+}
+
+/**
+ * Calculate high-level summary metrics across all applications
+ */
+export function calculateDashboardMetrics(ipos = [], partners = []) {
+  let totalAppliedCapital = 0;
+  let totalBlockedCapital = 0;
+  let totalRealizedProfit = 0;
+  let totalApplicationsCount = 0;
+  let totalAllottedCount = 0;
+
+  ipos.forEach(ipo => {
+    (ipo.applications || []).forEach(app => {
+      totalApplicationsCount++;
+      const lotAmount = app.amount || ((ipo.lotPrice || 14850) * (app.lots || 1));
+      totalAppliedCapital += lotAmount;
+
+      if (app.status === 'BLOCKED' || app.status === 'ALLOTTED') {
+        totalBlockedCapital += lotAmount;
+      }
+      if (app.status === 'ALLOTTED' || app.status === 'SOLD') {
+        totalAllottedCount++;
+      }
+      if (app.status === 'SOLD' && app.exitDetails) {
+        const totalSale = Number(app.exitDetails.totalSaleAmount || 0);
+        totalRealizedProfit += (totalSale - lotAmount);
+      }
+    });
+  });
+
+  const allotmentRate = totalApplicationsCount > 0 
+    ? ((totalAllottedCount / totalApplicationsCount) * 100).toFixed(1) 
+    : '0.0';
+
+  return {
+    totalAppliedCapital,
+    totalBlockedCapital,
+    totalRealizedProfit,
+    totalApplicationsCount,
+    totalAllottedCount,
+    allotmentRate
+  };
 }
