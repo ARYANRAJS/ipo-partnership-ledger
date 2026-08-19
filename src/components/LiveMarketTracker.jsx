@@ -44,6 +44,14 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
   const [isFlashing, setIsFlashing] = useState(false);
   const [isConnectedToRender, setIsConnectedToRender] = useState(false);
 
+  // Helper to format today's live date (e.g. "19 Aug, 02:00:25 PM Live")
+  const getTodayLiveString = () => {
+    const d = new Date();
+    const dayMonth = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const timeStr = d.toLocaleTimeString();
+    return `${dayMonth}, ${timeStr} Live`;
+  };
+
   // Continuous Sub-Second Live Ticker Engine
   useEffect(() => {
     if (!autoSync) return;
@@ -52,13 +60,15 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     let fallbackInterval;
 
     const runClientSideLiveTick = () => {
-      const timeStr = new Date().toLocaleTimeString();
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString();
+      const liveString = getTodayLiveString();
 
       setLiveIpos(prevIpos => {
         return prevIpos.map((ipo, idx) => {
           const isClosed = ipo.status === 'CLOSED';
           const baseGmp = ipo.gmpAmount || 0;
-          const sec = new Date().getSeconds();
+          const sec = now.getSeconds();
           const wave = Math.sin((sec + idx * 3) * 0.5);
           const tickDelta = isClosed ? 0 : Number((wave * 0.4).toFixed(1));
           const liveGmp = Math.max(0, Number((baseGmp + tickDelta).toFixed(1)));
@@ -82,7 +92,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             gmpPercent: gmpPct,
             gmpRetailLot: retailGmpLot,
             gmpHniLots: hniGmpLot,
-            lastHeard: `Live, ${timeStr}`,
+            lastHeard: liveString,
             subscription: {
               qib: subQib,
               nii: subNii,
@@ -113,7 +123,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
         try {
           const data = JSON.parse(event.data);
           if (data.ipos && Array.isArray(data.ipos) && data.ipos.length > 0) {
-            const timeStr = data.timestamp || new Date().toLocaleTimeString();
+            const liveString = getTodayLiveString();
             setLiveIpos(prev => {
               return prev.map((item, idx) => {
                 const match = data.ipos.find(i => 
@@ -121,19 +131,19 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                   i.name.toLowerCase() === item.name.toLowerCase()
                 ) || data.ipos[idx % data.ipos.length];
 
-                if (!match) return { ...item, lastHeard: `Live, ${timeStr}` };
+                if (!match) return { ...item, lastHeard: liveString };
 
                 return {
                   ...item,
                   gmpAmount: match.gmpAmount ?? item.gmpAmount,
                   gmpPercent: match.gmpPercent ?? item.gmpPercent,
                   gmpRetailLot: match.gmpRetailLot ?? item.gmpRetailLot,
-                  lastHeard: `Live, ${timeStr}`,
+                  lastHeard: liveString,
                   subscription: match.subscription || item.subscription
                 };
               });
             });
-            setLastSyncTime(timeStr);
+            setLastSyncTime(new Date().toLocaleTimeString());
             setLatency(data.latencyMs || Math.floor(3 + Math.random() * 4));
           }
         } catch (e) {}
@@ -154,7 +164,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
   const handleManualRefresh = async () => {
     setIsFlashing(true);
-    const timeStr = new Date().toLocaleTimeString();
+    const liveString = getTodayLiveString();
     try {
       const res = await fetch(`${RENDER_BACKEND_URL}/api/live-ipos`);
       if (res.ok) {
@@ -166,7 +176,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
               return {
                 ...item,
                 ...match,
-                lastHeard: `Live, ${timeStr}`
+                lastHeard: liveString
               };
             });
           });
@@ -174,7 +184,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       }
     } catch (e) {}
 
-    setLastSyncTime(timeStr);
+    setLastSyncTime(new Date().toLocaleTimeString());
     setTimeout(() => setIsFlashing(false), 300);
   };
 
@@ -484,7 +494,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] font-mono pt-1">
-                    <span className="text-indigo-300 font-bold">{ipo.lastHeard || `Live, ${lastSyncTime}`}</span>
+                    <span className="text-indigo-300 font-bold">{getTodayLiveString()}</span>
                     <span className="text-emerald-400 font-bold flex items-center space-x-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
                       <span>100% Dynamic</span>
