@@ -27,6 +27,15 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
     setStatusFilter
   } = useIPOLedger();
 
+  const getPartnerDisplayName = (partnerId) => {
+    const p = partners.find(item => item.id === partnerId);
+    if (p && p.name) return p.name;
+    if (partnerId === 'p-self') return 'Me (Primary)';
+    if (partnerId === 'p-vishal') return 'Vishal';
+    if (partnerId === 'p-partner3') return 'Partner 3 (Rohit)';
+    return partnerId ? partnerId.replace(/^p-/, '').toUpperCase() : 'Partner';
+  };
+
   // Find failed IPO applications that can be recycled/re-invested
   const uninvestedApps = [];
   ipos.forEach(ipo => {
@@ -63,7 +72,7 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
           </div>
           <button
             onClick={() => onOpenReinvest(uninvestedApps[0].app.id)}
-            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-amber-500/20 whitespace-nowrap flex items-center justify-center space-x-1.5"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-amber-500/20 whitespace-nowrap flex items-center justify-center space-x-1.5 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Re-invest Released Cash</span>
@@ -174,14 +183,14 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
           <div className="flex items-center space-x-2">
             <button
               onClick={() => onOpenSettleModal({})}
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-semibold text-xs border border-emerald-500/30 transition-all flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-semibold text-xs border border-emerald-500/30 transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
               <span>Record Direct Settlement</span>
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center space-x-1"
+              className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center space-x-1 cursor-pointer"
             >
               <span>Detailed Ledger</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -207,9 +216,9 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-sm text-rose-400">{tx.fromName}</span>
+                    <span className="font-bold text-sm text-rose-400">{getPartnerDisplayName(tx.fromPartnerId)}</span>
                     <span className="text-xs text-slate-400">owes</span>
-                    <span className="font-bold text-sm text-emerald-400">{tx.toName}</span>
+                    <span className="font-bold text-sm text-emerald-400">{getPartnerDisplayName(tx.toPartnerId)}</span>
                   </div>
                   <div className="text-xl font-extrabold text-white font-mono">
                     {formatINR(tx.amount)}
@@ -220,8 +229,8 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
                 </div>
 
                 <button
-                  onClick={() => onOpenSettleModal({ fromPartnerId: tx.fromId, toPartnerId: tx.toId, amount: tx.amount })}
-                  className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors shadow-md shadow-indigo-600/30 whitespace-nowrap"
+                  onClick={() => onOpenSettleModal({ fromPartnerId: tx.fromPartnerId, toPartnerId: tx.toPartnerId, amount: tx.amount })}
+                  className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors shadow-md shadow-indigo-600/30 whitespace-nowrap cursor-pointer"
                 >
                   Settle Up
                 </button>
@@ -239,7 +248,7 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
           </h3>
           <button
             onClick={() => setActiveTab('ipos')}
-            className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
+            className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 cursor-pointer"
           >
             <span>View All Applications</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -268,25 +277,27 @@ export default function Dashboard({ onOpenNewIPO, onOpenReinvest, onOpenSettleMo
                 {/* Application breakdown */}
                 <div className="space-y-2 border-t border-slate-800/80 pt-2 text-xs">
                   {apps.map(app => {
-                    const applicant = partners.find(p => p.id === app.applicantPartnerId)?.name || 'Unknown';
-                    const payer = partners.find(p => p.id === app.payerPartnerId)?.name || 'Unknown';
+                    const applicant = getPartnerDisplayName(app.applicantPartnerId);
+                    const payer = getPartnerDisplayName(app.payerPartnerId);
                     return (
-                      <div key={app.id} className="flex items-center justify-between bg-slate-900/50 p-2 rounded-lg">
+                      <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900/60 p-2.5 rounded-lg gap-2">
                         <div>
-                          <span className="font-semibold text-slate-200">Acc: {applicant}</span>
-                          <span className="text-[11px] text-slate-400 block">Paid by: {payer}</span>
+                          <span className="font-semibold text-slate-200">Acc: <strong className="text-white font-bold">{applicant}</strong></span>
+                          <span className="text-[11px] text-slate-400 block">Paid by: <strong className="text-indigo-300">{payer}</strong></span>
                         </div>
                         <div className="text-right">
-                          <span className="font-mono font-bold text-white">{formatINR(app.amount)}</span>
-                          <div className="flex items-center justify-end space-x-1 mt-0.5">
-                            {app.partners?.map(p => {
-                              const partnerName = partners.find(pt => pt.id === p.partnerId)?.name?.split(' ')[0] || p.partnerId;
-                              return (
-                                <span key={p.partnerId} className="px-1.5 py-0.2 text-[10px] rounded bg-slate-800 text-indigo-300 border border-slate-700">
-                                  {partnerName}: {p.percentage}%
-                                </span>
-                              );
-                            })}
+                          <span className="font-mono font-bold text-white text-sm">{formatINR(app.amount)}</span>
+                          <div className="flex items-center justify-end space-x-1 flex-wrap gap-y-1 mt-0.5">
+                            {app.partners
+                              ?.filter(p => p.percentage > 0)
+                              ?.map(p => {
+                                const partnerName = getPartnerDisplayName(p.partnerId);
+                                return (
+                                  <span key={p.partnerId} className="px-2 py-0.5 text-[10px] font-semibold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                    {partnerName}: {p.percentage}%
+                                  </span>
+                                );
+                              })}
                           </div>
                         </div>
                       </div>
