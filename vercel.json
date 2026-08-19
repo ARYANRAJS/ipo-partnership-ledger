@@ -1,8 +1,4 @@
 {
-  "routes": [
-    { "src": "/api/(.*)", "dest": "https://ipo-backend-nugn.onrender.com/api/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
