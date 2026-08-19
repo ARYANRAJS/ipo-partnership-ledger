@@ -23,45 +23,44 @@ export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onO
     if (id === 'p-self') return 'Me (Primary)';
     if (id === 'p-vishal') return 'Vishal';
     if (id === 'p-partner3') return 'Partner 3 (Rohit)';
-    return id ? id.replace(/^p-/, '').toUpperCase() : 'Unknown';
+    return id ? id.replace(/^p-/, '').toUpperCase() : 'Partner';
   };
+
   const getAccountName = (id) => accounts.find(a => a.id === id)?.name || 'Default Bank';
 
   const handleDelete = () => {
-    deleteIPO(ipo.id);
+    if (window.confirm(`Are you sure you want to delete "${ipo.name}"? This action cannot be undone.`)) {
+      deleteIPO(ipo.id);
+    }
   };
 
   return (
-    <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-4 animate-fade-in relative group">
+    <div className="p-5 rounded-2xl glass-card border border-slate-800 hover:border-slate-700 transition-all space-y-4 shadow-xl">
       
       {/* Header Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+      <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <h3 className="font-extrabold text-lg text-white tracking-tight">{ipo.name}</h3>
-            <span className={`px-3 py-1 text-xs font-extrabold rounded-full tracking-wide uppercase ${
+            <span className={`px-2.5 py-0.5 text-xs font-extrabold rounded-full ${
               ipo.status === 'BLOCKED' ? 'badge-blocked' :
               ipo.status === 'ALLOTTED' ? 'badge-allotted' :
               ipo.status === 'SOLD' ? 'badge-sold' : 'badge-unallotted'
             }`}>
-              {ipo.status.replace('_', ' ')}
+              {ipo.status}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 flex items-center space-x-2">
-            <span className="flex items-center space-x-1">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-              <span>Applied: {ipo.applyDate}</span>
-            </span>
+          <div className="flex items-center space-x-3 text-xs text-slate-400 mt-1 font-mono">
+            <span>Applied: {ipo.applyDate}</span>
             <span>•</span>
-            <span>Lot Price: <strong className="text-slate-200 font-mono">{formatINR(ipo.lotPrice)}</strong></span>
-            {ipo.sharesPerLot && <span>({ipo.sharesPerLot} shares)</span>}
-          </p>
+            <span>Lot Price: <strong className="text-white">{formatINR(ipo.lotPrice)}</strong> ({ipo.sharesPerLot} shares)</span>
+          </div>
         </div>
 
         <button
           onClick={handleDelete}
-          title="Delete IPO record"
-          className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors self-end sm:self-center"
+          title="Delete IPO Record"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition-colors"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -111,19 +110,19 @@ export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onO
                 </div>
 
                 {/* Status Action Buttons */}
-                <div className="flex items-center space-x-1.5 self-start sm:self-center">
+                <div className="flex items-center space-x-2">
                   {app.status === 'BLOCKED' && (
                     <>
                       <button
                         onClick={() => updateApplicationStatus(ipo.id, app.id, 'ALLOTTED')}
-                        className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs transition-all flex items-center space-x-1"
+                        className="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs transition-all flex items-center space-x-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Allotted!</span>
+                        <span>Allotted 🎉</span>
                       </button>
                       <button
-                        onClick={() => updateApplicationStatus(ipo.id, app.id, 'NOT_ALLOTTED', new Date().toISOString().slice(0, 10))}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs transition-all flex items-center space-x-1"
+                        onClick={() => updateApplicationStatus(ipo.id, app.id, 'NOT_ALLOTTED')}
+                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all flex items-center space-x-1"
                       >
                         <XCircle className="w-3.5 h-3.5 text-slate-400" />
                         <span>Not Allotted</span>
@@ -169,30 +168,32 @@ export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onO
                 </div>
               </div>
 
-              {/* Partnership percentage split bar */}
+              {/* Partnership percentage split bar - ONLY SHOW ACTIVE PARTICIPATING PARTNERS (>0%) */}
               <div className="space-y-1 bg-slate-900/60 p-2.5 rounded-lg">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>Partnership Split & Rights:</span>
                 </div>
                 <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                  {app.partners?.map(p => {
-                    const name = getPartnerName(p.partnerId);
-                    const partnerCapShare = (app.amount * p.percentage) / 100;
-                    return (
-                      <div 
-                        key={p.partnerId} 
-                        className="px-2.5 py-1 rounded bg-slate-800/90 text-slate-200 font-medium text-xs border border-slate-700/80 flex items-center space-x-1.5"
-                      >
-                        <span className="font-bold text-indigo-300">{name}</span>
-                        <span className="text-slate-400">({p.percentage}%)</span>
-                        <span className="font-mono text-emerald-400 text-[11px]">[{formatINR(partnerCapShare)}]</span>
-                      </div>
-                    );
-                  })}
+                  {app.partners
+                    ?.filter(p => p.percentage > 0)
+                    ?.map(p => {
+                      const name = getPartnerName(p.partnerId);
+                      const partnerCapShare = (app.amount * p.percentage) / 100;
+                      return (
+                        <div 
+                          key={p.partnerId} 
+                          className="px-2.5 py-1 rounded bg-slate-800/90 text-slate-200 font-medium text-xs border border-slate-700/80 flex items-center space-x-1.5"
+                        >
+                          <span className="font-bold text-indigo-300">{name}</span>
+                          <span className="text-slate-400">({p.percentage}%)</span>
+                          <span className="font-mono text-emerald-400 text-[11px]">[{formatINR(partnerCapShare)}]</span>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
-              {/* Exit details breakdown if SOLD */}
+              {/* Exit details breakdown if SOLD - ONLY SHOW ACTIVE PARTICIPATING PARTNERS (>0%) */}
               {app.status === 'SOLD' && app.exitDetails && (
                 <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-500/30 space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -219,21 +220,23 @@ export default function IPOCard({ ipo, onOpenExitModal, onOpenReinvestModal, onO
                     })()}
                   </div>
 
-                  {/* Partner Share of Profit / Loss */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-indigo-500/20">
-                    {app.partners?.map(p => {
-                      const pnl = app.exitDetails.totalSaleAmount - app.amount;
-                      const partnerPnLShare = (pnl * p.percentage) / 100;
-                      const name = getPartnerName(p.partnerId);
-                      return (
-                        <div key={p.partnerId} className="bg-slate-900/80 p-2 rounded border border-slate-800">
-                          <span className="text-slate-400 block text-[10px]">{name} ({p.percentage}%)</span>
-                          <span className={`font-mono font-bold ${partnerPnLShare >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {partnerPnLShare >= 0 ? '+' : ''}{formatINR(partnerPnLShare)}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  {/* Partner Share of Profit / Loss - ONLY SHOW ACTIVE PARTICIPATING PARTNERS (>0%) */}
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1 text-xs pt-1 border-t border-indigo-500/20">
+                    {app.partners
+                      ?.filter(p => p.percentage > 0)
+                      ?.map(p => {
+                        const pnl = app.exitDetails.totalSaleAmount - app.amount;
+                        const partnerPnLShare = (pnl * p.percentage) / 100;
+                        const name = getPartnerName(p.partnerId);
+                        return (
+                          <div key={p.partnerId} className="bg-slate-900/80 p-2 rounded border border-slate-800 flex-1 min-w-[140px]">
+                            <span className="text-slate-400 block text-[10px]">{name} ({p.percentage}%)</span>
+                            <span className={`font-mono font-bold ${partnerPnLShare >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {partnerPnLShare >= 0 ? '+' : ''}{formatINR(partnerPnLShare)}
+                            </span>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
