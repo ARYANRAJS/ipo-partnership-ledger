@@ -29,6 +29,13 @@ import {
 
 const RENDER_BACKEND_URL = "https://ipo-backend-nugn.onrender.com";
 
+// Base immutable lookup map by ID/Name to prevent state compounding
+const BASE_IPO_MAP = {};
+INITIAL_LIVE_IPOS.forEach(item => {
+  BASE_IPO_MAP[item.id] = item;
+  BASE_IPO_MAP[item.name.toLowerCase()] = item;
+});
+
 export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewDetails }) {
   const [liveIpos, setLiveIpos] = useState(INITIAL_LIVE_IPOS);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -77,7 +84,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     return `${dayMonth}, ${timeStr} Live`;
   };
 
-  // Continuous Sub-Second Live Ticker & Reverse Timer Engine
+  // Continuous Sub-Second Live Ticker & Reverse Timer Engine (Bounded Realistic Math)
   useEffect(() => {
     if (!autoSync) return;
 
@@ -93,19 +100,23 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       setLiveIpos(prevIpos => {
         return prevIpos.map((ipo, idx) => {
           const isClosed = ipo.status === 'CLOSED';
-          const baseGmp = ipo.gmpAmount || 0;
+          // Always read base catalog anchor to prevent compounding
+          const baseItem = BASE_IPO_MAP[ipo.id] || BASE_IPO_MAP[ipo.name.toLowerCase()] || ipo;
+          const anchorGmp = baseItem.gmpAmount || 0;
+          
           const sec = now.getSeconds();
           const wave = Math.sin((sec + idx * 3) * 0.5);
-          const tickDelta = isClosed ? 0 : Number((wave * 0.4).toFixed(1));
-          const liveGmp = Math.max(0, Number((baseGmp + tickDelta).toFixed(1)));
+          // Micro-fluctuation between -0.3 and +0.3
+          const tickDelta = isClosed ? 0 : Number((wave * 0.3).toFixed(1));
+          const liveGmp = Math.max(0, Number((anchorGmp + tickDelta).toFixed(1)));
 
           const priceParts = (ipo.priceBand || '₹100').replace(/[^0-9-]/g, '').split('-');
           const highPrice = parseFloat(priceParts[priceParts.length - 1]) || 100;
           const lotSize = ipo.lotSize || 1;
 
           const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
-          const retailGmpLot = Number((lotSize * liveGmp).toFixed(2));
-          const hniGmpLot = Number((lotSize * 14 * liveGmp).toFixed(2));
+          const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
+          const hniGmpLot = Number((lotSize * 14 * liveGmp).toFixed(0));
 
           const subQib = isClosed ? 42.5 : Number((2.5 + Math.sin(sec * 0.2 + idx) * 0.8).toFixed(1));
           const subNii = isClosed ? 68.2 : Number((12.4 + Math.cos(sec * 0.3 + idx) * 1.5).toFixed(1));
@@ -151,19 +162,27 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
           if (data.ipos && Array.isArray(data.ipos) && data.ipos.length > 0) {
             const liveString = getTodayLiveString();
             setLiveIpos(prev => {
-              return prev.map((item, idx) => {
+              return prev.map((item) => {
+                // Strict matching ONLY by exact ID or exact lowercased name
                 const match = data.ipos.find(i => 
                   i.id === item.id || 
                   i.name.toLowerCase() === item.name.toLowerCase()
-                ) || data.ipos[idx % data.ipos.length];
+                );
 
                 if (!match) return { ...item, lastHeard: liveString };
 
+                const priceParts = (item.priceBand || '₹100').replace(/[^0-9-]/g, '').split('-');
+                const highPrice = parseFloat(priceParts[priceParts.length - 1]) || 100;
+                const lotSize = item.lotSize || 1;
+                const liveGmp = Number((match.gmpAmount ?? item.gmpAmount).toFixed(1));
+                const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
+                const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
+
                 return {
                   ...item,
-                  gmpAmount: match.gmpAmount ?? item.gmpAmount,
-                  gmpPercent: match.gmpPercent ?? item.gmpPercent,
-                  gmpRetailLot: match.gmpRetailLot ?? item.gmpRetailLot,
+                  gmpAmount: liveGmp,
+                  gmpPercent: gmpPct,
+                  gmpRetailLot: retailGmpLot,
                   lastHeard: liveString,
                   subscription: match.subscription || item.subscription
                 };
@@ -197,11 +216,22 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
         const data = await res.json();
         if (data.ipos && data.ipos.length > 0) {
           setLiveIpos(prev => {
-            return prev.map((item, idx) => {
-              const match = data.ipos.find(i => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase()) || data.ipos[idx % data.ipos.length];
+            return prev.map((item) => {
+              const match = data.ipos.find(i => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase());
+              if (!match) return item;
+
+              const priceParts = (item.priceBand || '₹100').replace(/[^0-9-]/g, '').split('-');
+              const highPrice = parseFloat(priceParts[priceParts.length - 1]) || 100;
+              const lotSize = item.lotSize || 1;
+              const liveGmp = Number((match.gmpAmount ?? item.gmpAmount).toFixed(1));
+              const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
+              const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
+
               return {
                 ...item,
-                ...match,
+                gmpAmount: liveGmp,
+                gmpPercent: gmpPct,
+                gmpRetailLot: retailGmpLot,
                 lastHeard: liveString
               };
             });
