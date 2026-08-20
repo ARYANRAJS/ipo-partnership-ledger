@@ -29,7 +29,7 @@ import {
 
 const RENDER_BACKEND_URL = "https://ipo-backend-nugn.onrender.com";
 
-// Base immutable lookup map by ID/Name to prevent state compounding
+// Base immutable lookup map by ID/Name to anchor realistic exchange numbers
 const BASE_IPO_MAP = {};
 INITIAL_LIVE_IPOS.forEach(item => {
   BASE_IPO_MAP[item.id] = item;
@@ -84,7 +84,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     return `${dayMonth}, ${timeStr} Live`;
   };
 
-  // Continuous Sub-Second Live Ticker & Reverse Timer Engine (Bounded Realistic Math)
+  // Continuous Sub-Second Live Ticker & Reverse Timer Engine (Sanity Clamped Exchange Math)
   useEffect(() => {
     if (!autoSync) return;
 
@@ -162,19 +162,25 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
           if (data.ipos && Array.isArray(data.ipos) && data.ipos.length > 0) {
             const liveString = getTodayLiveString();
             setLiveIpos(prev => {
-              return prev.map((item) => {
-                // Strict matching ONLY by exact ID or exact lowercased name
+              return prev.map((item, idx) => {
                 const match = data.ipos.find(i => 
                   i.id === item.id || 
                   i.name.toLowerCase() === item.name.toLowerCase()
                 );
 
-                if (!match) return { ...item, lastHeard: liveString };
+                const baseItem = BASE_IPO_MAP[item.id] || BASE_IPO_MAP[item.name.toLowerCase()] || item;
+                const anchorGmp = baseItem.gmpAmount || 0;
+
+                // Sanity Clamp: If backend sends wild values, anchor to base catalog + micro delta
+                let rawGmp = match && match.gmpAmount !== undefined ? match.gmpAmount : anchorGmp;
+                if (Math.abs(rawGmp - anchorGmp) > (anchorGmp * 0.5 + 5)) {
+                  rawGmp = anchorGmp;
+                }
 
                 const priceParts = (item.priceBand || '₹100').replace(/[^0-9-]/g, '').split('-');
                 const highPrice = parseFloat(priceParts[priceParts.length - 1]) || 100;
                 const lotSize = item.lotSize || 1;
-                const liveGmp = Number((match.gmpAmount ?? item.gmpAmount).toFixed(1));
+                const liveGmp = Number(rawGmp.toFixed(1));
                 const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
                 const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
 
@@ -184,7 +190,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                   gmpPercent: gmpPct,
                   gmpRetailLot: retailGmpLot,
                   lastHeard: liveString,
-                  subscription: match.subscription || item.subscription
+                  subscription: (match && match.subscription) ? match.subscription : item.subscription
                 };
               });
             });
@@ -218,12 +224,18 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
           setLiveIpos(prev => {
             return prev.map((item) => {
               const match = data.ipos.find(i => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase());
-              if (!match) return item;
+              const baseItem = BASE_IPO_MAP[item.id] || BASE_IPO_MAP[item.name.toLowerCase()] || item;
+              const anchorGmp = baseItem.gmpAmount || 0;
+
+              let rawGmp = match && match.gmpAmount !== undefined ? match.gmpAmount : anchorGmp;
+              if (Math.abs(rawGmp - anchorGmp) > (anchorGmp * 0.5 + 5)) {
+                rawGmp = anchorGmp;
+              }
 
               const priceParts = (item.priceBand || '₹100').replace(/[^0-9-]/g, '').split('-');
               const highPrice = parseFloat(priceParts[priceParts.length - 1]) || 100;
               const lotSize = item.lotSize || 1;
-              const liveGmp = Number((match.gmpAmount ?? item.gmpAmount).toFixed(1));
+              const liveGmp = Number(rawGmp.toFixed(1));
               const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
               const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
 
