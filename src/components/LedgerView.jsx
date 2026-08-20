@@ -10,10 +10,7 @@ import {
   ArrowRight, 
   ShieldCheck, 
   UserCheck, 
-  DollarSign,
-  Download,
-  Building2,
-  FileSpreadsheet
+  DollarSign
 } from 'lucide-react';
 
 export default function LedgerView({ onOpenSettleModal }) {
@@ -26,108 +23,6 @@ export default function LedgerView({ onOpenSettleModal }) {
     if (partnerId === 'p-vishal') return 'Vishal';
     if (partnerId === 'p-partner3') return 'Partner 3 (Rohit)';
     return partnerId ? partnerId.replace(/^p-/, '').toUpperCase() : 'Unknown';
-  };
-
-  // Full populated GST CSV Exporter for CA filing
-  const handleExportGSTCSV = () => {
-    const headers = [
-      "Order Number",
-      "Customer Name",
-      "Customer Email",
-      "Customer Phone",
-      "Shipping Address",
-      "Customer GSTIN",
-      "Total Amount (INR)",
-      "Total GST (INR)",
-      "CGST (INR)",
-      "SGST (INR)",
-      "IGST (INR)",
-      "Date"
-    ];
-
-    const gstOrders = [
-      {
-        orderNo: "ORD-2026-101",
-        name: "Rahul Sharma",
-        email: "rahul.sharma@example.com",
-        phone: "9876543210",
-        address: "Connaught Place, New Delhi",
-        gstin: "07AAAAA1234A1Z5",
-        totalAmount: 14500,
-        totalGst: 1048,
-        cgst: 524,
-        sgst: 524,
-        igst: 0,
-        date: "2026-08-15"
-      },
-      {
-        orderNo: "ORD-2026-102",
-        name: "Amit Patel",
-        email: "amit.patel@example.com",
-        phone: "9811223344",
-        address: "SG Highway, Ahmedabad",
-        gstin: "24BBBBB5678B1Z2",
-        totalAmount: 9800,
-        totalGst: 690,
-        cgst: 345,
-        sgst: 345,
-        igst: 0,
-        date: "2026-08-16"
-      },
-      {
-        orderNo: "ORD-2026-103",
-        name: "Priya Verma",
-        email: "priya.verma@example.com",
-        phone: "9900112233",
-        address: "Civil Lines, Jaipur",
-        gstin: "08CCCCC9012C1Z9",
-        totalAmount: 4200,
-        totalGst: 347,
-        cgst: 0,
-        sgst: 0,
-        igst: 347,
-        date: "2026-08-17"
-      },
-      {
-        orderNo: "ORD-2026-104",
-        name: "Vikram Singh",
-        email: "vikram.singh@example.com",
-        phone: "9744332211",
-        address: "MG Road, Bengaluru",
-        gstin: "29DDDDD3456D1Z4",
-        totalAmount: 3100,
-        totalGst: 179,
-        cgst: 179,
-        sgst: 0,
-        igst: 0,
-        date: "2026-08-18"
-      }
-    ];
-
-    const rows = gstOrders.map(o => [
-      `"${o.orderNo}"`,
-      `"${o.name}"`,
-      `"${o.email}"`,
-      `"${o.phone}"`,
-      `"${o.address}"`,
-      `"${o.gstin}"`,
-      o.totalAmount,
-      o.totalGst,
-      o.cgst,
-      o.sgst,
-      o.igst,
-      `"${o.date}"`
-    ].join(","));
-
-    const csvData = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `GST_Tax_Ledger_CA_Report_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   return (
