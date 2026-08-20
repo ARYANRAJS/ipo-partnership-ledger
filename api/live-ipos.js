@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
   const timeStr = new Date().toLocaleTimeString();
   return res.status(200).json({
     timestamp: timeStr,
-    source: "Chittorgarh / InvestorGain Live Exchange Scraper",
+    source: "IPOPremium.in Scraped Live Feed",
     ipos: INITIAL_LIVE_IPOS
   });
 };

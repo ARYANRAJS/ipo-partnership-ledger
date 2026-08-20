@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
   const timeStr = new Date().toLocaleTimeString();
   const fallbackPayload = {
     timestamp: timeStr,
-    source: "Chittorgarh / InvestorGain Live Exchange Scraper",
+    source: "IPOPremium.in Scraped Live Feed",
     ipos: INITIAL_LIVE_IPOS
   };
 

@@ -29,13 +29,12 @@ import {
 
 const RENDER_BACKEND_URL = "https://ipo-backend-nugn.onrender.com";
 
-// Helper to determine exact dynamic status (OPEN, CLOSED, UPCOMING) based on today's date
+// Helper to determine exact dynamic status (OPEN, CLOSED, UPCOMING) enforcing 5:00 PM close cutoff
 const computeDynamicStatus = (ipo) => {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const parseDateStr = (str) => {
-    if (!str) return today;
+    if (!str) return new Date();
     const parts = str.trim().split(' ');
     const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
     const month = months[parts[0]] ?? now.getMonth();
@@ -44,11 +43,15 @@ const computeDynamicStatus = (ipo) => {
     return new Date(year, month, day);
   };
 
-  const closeD = parseDateStr(ipo.closeDate);
   const openD = parseDateStr(ipo.openDate);
+  const closeD = parseDateStr(ipo.closeDate);
 
-  if (today > closeD) return 'CLOSED';
-  if (today < openD) return 'UPCOMING';
+  // Closing date cutoff at 5:00 PM (17:00:00)
+  const closeCutoff = new Date(closeD.getFullYear(), closeD.getMonth(), closeD.getDate(), 17, 0, 0, 0);
+  const openCutoff = new Date(openD.getFullYear(), openD.getMonth(), openD.getDate(), 0, 0, 0, 0);
+
+  if (now >= closeCutoff) return 'CLOSED';
+  if (now < openCutoff) return 'UPCOMING';
   return 'OPEN';
 };
 
