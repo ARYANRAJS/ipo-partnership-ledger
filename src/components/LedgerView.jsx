@@ -154,55 +154,7 @@ export default function LedgerView({ onOpenSettleModal }) {
         </button>
       </div>
 
-      {/* Total GST Tax Liability & Collection Ledger Widget */}
-      <div className="p-6 rounded-2xl glass-panel border border-slate-800 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center space-x-2">
-              <Building2 className="w-5 h-5 text-indigo-400" />
-              <h3 className="font-bold text-base text-white">Total GST Tax Liability & Collection Ledger</h3>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Automated CGST (50%) + SGST (50%) vs IGST (100%) breakdown
-            </p>
-          </div>
 
-          <button
-            onClick={handleExportGSTCSV}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center space-x-2 transition-all active:scale-95 shrink-0 cursor-pointer"
-          >
-            <Download className="w-4 h-4 text-emerald-400" />
-            <span>Export GST CSV (for CA)</span>
-          </button>
-        </div>
-
-        {/* GST Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total GST Collected</span>
-            <span className="font-mono font-extrabold text-2xl text-emerald-400">{formatINR(2264)}</span>
-            <span className="text-[10px] text-slate-500 block">Includes CGST, SGST & IGST</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Central Tax (CGST 50%)</span>
-            <span className="font-mono font-extrabold text-2xl text-indigo-400">{formatINR(1048)}</span>
-            <span className="text-[10px] text-slate-500 block">Intra-State Central Tax</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">State Tax (SGST 50%)</span>
-            <span className="font-mono font-extrabold text-2xl text-purple-400">{formatINR(869)}</span>
-            <span className="text-[10px] text-slate-500 block">Intra-State State Tax</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Integrated Tax (IGST 100%)</span>
-            <span className="font-mono font-extrabold text-2xl text-amber-400">{formatINR(347)}</span>
-            <span className="text-[10px] text-slate-500 block">Inter-State Integrated Tax</span>
-          </div>
-        </div>
-      </div>
 
       {/* Partner Balances Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
