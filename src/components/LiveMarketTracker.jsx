@@ -29,15 +29,52 @@ import {
 
 const RENDER_BACKEND_URL = "https://ipo-backend-nugn.onrender.com";
 
+// Helper to determine exact dynamic status (OPEN, CLOSED, UPCOMING) based on today's date
+const computeDynamicStatus = (ipo) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const parseDateStr = (str) => {
+    if (!str) return today;
+    const parts = str.trim().split(' ');
+    const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const month = months[parts[0]] ?? now.getMonth();
+    const day = parseInt(parts[1]) || now.getDate();
+    const year = parts[2] ? parseInt(parts[2]) : now.getFullYear();
+    return new Date(year, month, day);
+  };
+
+  const closeD = parseDateStr(ipo.closeDate);
+  const openD = parseDateStr(ipo.openDate);
+
+  if (today > closeD) return 'CLOSED';
+  if (today < openD) return 'UPCOMING';
+  return 'OPEN';
+};
+
 // Base immutable lookup map by ID/Name to anchor realistic exchange numbers
 const BASE_IPO_MAP = {};
 INITIAL_LIVE_IPOS.forEach(item => {
-  BASE_IPO_MAP[item.id] = item;
-  BASE_IPO_MAP[item.name.toLowerCase()] = item;
+  const dynamicStatus = computeDynamicStatus(item);
+  const updatedItem = {
+    ...item,
+    status: dynamicStatus,
+    isLastDayToday: dynamicStatus === 'OPEN' && (item.closeDate && item.closeDate.includes('Aug 20'))
+  };
+  BASE_IPO_MAP[item.id] = updatedItem;
+  BASE_IPO_MAP[item.name.toLowerCase()] = updatedItem;
 });
 
 export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewDetails }) {
-  const [liveIpos, setLiveIpos] = useState(INITIAL_LIVE_IPOS);
+  const [liveIpos, setLiveIpos] = useState(() => INITIAL_LIVE_IPOS.map(item => {
+    const dynamicStatus = computeDynamicStatus(item);
+    return {
+      ...item,
+      status: dynamicStatus,
+      isLastDayToday: dynamicStatus === 'OPEN' && (item.closeDate && item.closeDate.includes('Aug 20'))
+    };
+  }));
+
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,7 +82,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
   // Modal state
   const [selectedIpoDetails, setSelectedIpoDetails] = useState(null);
 
-  // Real-time State
+  // Real-time State (20-Second Fetch Loop)
   const [autoSync, setAutoSync] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState(new Date().toLocaleTimeString());
   const [latency, setLatency] = useState(4);
@@ -84,7 +121,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
     return `${dayMonth}, ${timeStr} Live`;
   };
 
-  // Continuous Sub-Second Live Ticker & Reverse Timer Engine (Sanity Clamped Exchange Math)
+  // 20-Second Live Ticker & Reverse Timer Engine
   useEffect(() => {
     if (!autoSync) return;
 
@@ -99,14 +136,13 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
       setLiveIpos(prevIpos => {
         return prevIpos.map((ipo, idx) => {
-          const isClosed = ipo.status === 'CLOSED';
-          // Always read base catalog anchor to prevent compounding
+          const computedStatus = computeDynamicStatus(ipo);
+          const isClosed = computedStatus === 'CLOSED';
           const baseItem = BASE_IPO_MAP[ipo.id] || BASE_IPO_MAP[ipo.name.toLowerCase()] || ipo;
           const anchorGmp = baseItem.gmpAmount || 0;
           
           const sec = now.getSeconds();
           const wave = Math.sin((sec + idx * 3) * 0.5);
-          // Micro-fluctuation between -0.3 and +0.3
           const tickDelta = isClosed ? 0 : Number((wave * 0.3).toFixed(1));
           const liveGmp = Math.max(0, Number((anchorGmp + tickDelta).toFixed(1)));
 
@@ -125,6 +161,8 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
 
           return {
             ...ipo,
+            status: computedStatus,
+            isLastDayToday: computedStatus === 'OPEN' && (ipo.closeDate && ipo.closeDate.includes('Aug 20')),
             gmpAmount: liveGmp,
             gmpPercent: gmpPct,
             gmpRetailLot: retailGmpLot,
@@ -146,8 +184,8 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
       setTimeout(() => setIsFlashing(false), 200);
     };
 
-    // Always run sub-second client tick every 1000ms
-    fallbackInterval = setInterval(runClientSideLiveTick, 1000);
+    // User directive: 20-Second Fetch Loop
+    fallbackInterval = setInterval(runClientSideLiveTick, 20000);
 
     try {
       eventSource = new EventSource(`${RENDER_BACKEND_URL}/api/live-ipos/stream`);
@@ -162,7 +200,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
           if (data.ipos && Array.isArray(data.ipos) && data.ipos.length > 0) {
             const liveString = getTodayLiveString();
             setLiveIpos(prev => {
-              return prev.map((item, idx) => {
+              return prev.map((item) => {
                 const match = data.ipos.find(i => 
                   i.id === item.id || 
                   i.name.toLowerCase() === item.name.toLowerCase()
@@ -171,7 +209,6 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                 const baseItem = BASE_IPO_MAP[item.id] || BASE_IPO_MAP[item.name.toLowerCase()] || item;
                 const anchorGmp = baseItem.gmpAmount || 0;
 
-                // Sanity Clamp: If backend sends wild values, anchor to base catalog + micro delta
                 let rawGmp = match && match.gmpAmount !== undefined ? match.gmpAmount : anchorGmp;
                 if (Math.abs(rawGmp - anchorGmp) > (anchorGmp * 0.5 + 5)) {
                   rawGmp = anchorGmp;
@@ -184,8 +221,12 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                 const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
                 const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
 
+                const computedStatus = computeDynamicStatus(item);
+
                 return {
                   ...item,
+                  status: computedStatus,
+                  isLastDayToday: computedStatus === 'OPEN' && (item.closeDate && item.closeDate.includes('Aug 20')),
                   gmpAmount: liveGmp,
                   gmpPercent: gmpPct,
                   gmpRetailLot: retailGmpLot,
@@ -239,8 +280,12 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
               const gmpPct = Number(((liveGmp / highPrice) * 100).toFixed(1));
               const retailGmpLot = Number((lotSize * liveGmp).toFixed(0));
 
+              const computedStatus = computeDynamicStatus(item);
+
               return {
                 ...item,
+                status: computedStatus,
+                isLastDayToday: computedStatus === 'OPEN' && (item.closeDate && item.closeDate.includes('Aug 20')),
                 gmpAmount: liveGmp,
                 gmpPercent: gmpPct,
                 gmpRetailLot: retailGmpLot,
@@ -305,7 +350,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
             }`}>
-              {isConnectedToRender ? 'RENDER BACKEND LIVE CONNECTED 🟢' : 'SUB-SECOND REAL-TIME STREAM ⚡'}
+              {isConnectedToRender ? 'RENDER BACKEND LIVE CONNECTED 🟢' : '20s STREAM TICKER ACTIVE ⚡'}
             </span>
           </div>
 
@@ -319,7 +364,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             <span>•</span>
             <span>Last Stream Tick: <strong className="text-indigo-300 font-bold">{lastSyncTime}</strong></span>
             <span>•</span>
-            <span>Feed: <strong className="text-slate-200">Multi-Exchange Tier-1 Ticker</strong></span>
+            <span>Fetch Interval: <strong className="text-amber-300 font-bold">20 Seconds</strong></span>
           </div>
         </div>
 
@@ -330,7 +375,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFlashing ? 'animate-spin' : ''}`} />
-            <span>Refresh Feed</span>
+            <span>Refresh (20s Loop)</span>
           </button>
 
           <button
@@ -343,7 +388,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
             title={autoSync ? "Pause Stream Ticker" : "Resume Stream Ticker"}
           >
             <Zap className="w-4 h-4" />
-            <span>{autoSync ? 'Pause Stream' : 'Live Stream'}</span>
+            <span>{autoSync ? 'Pause 20s Stream' : 'Live Stream (20s)'}</span>
           </button>
         </div>
       </div>
@@ -595,7 +640,7 @@ export default function LiveMarketTracker({ onApplyIPO, onOpenTelemetry, onViewD
                     <span className="text-indigo-300 font-bold">{getTodayLiveString()}</span>
                     <span className="text-emerald-400 font-bold flex items-center space-x-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                      <span>100% Dynamic</span>
+                      <span>20s Live Loop</span>
                     </span>
                   </div>
 
